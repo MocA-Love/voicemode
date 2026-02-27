@@ -566,7 +566,7 @@ def generate_chime(
     fade_samples = int(sample_rate * 0.01)  # 10ms fade
     
     # Determine amplitude based on output device
-    amplitude = 0.0375  # Default (very quiet)
+    amplitude = 0.075  # Default
     try:
         import sounddevice as sd
         default_output = sd.default.device[1]
@@ -578,7 +578,7 @@ def generate_chime(
                 amplitude = 0.15  # Higher amplitude for Bluetooth devices
                 logger.debug(f"Bluetooth device detected ({devices[default_output]['name']}), using amplitude {amplitude}")
             else:
-                amplitude = 0.075  # Moderate amplitude for built-in speakers
+                amplitude = 0.15  # Moderate amplitude for built-in speakers
                 logger.debug(f"Built-in speaker detected ({devices[default_output]['name']}), using amplitude {amplitude}")
     except Exception as e:
         logger.debug(f"Could not detect output device type: {e}, using default amplitude {amplitude}")

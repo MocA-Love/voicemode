@@ -11,7 +11,7 @@ from openai import AsyncOpenAI
 from .openai_error_parser import OpenAIErrorParser
 from .provider_discovery import is_local_provider
 
-from .config import TTS_BASE_URLS, STT_BASE_URLS, OPENAI_API_KEY, STT_PROMPT
+from .config import TTS_BASE_URLS, STT_BASE_URLS, OPENAI_API_KEY, STT_PROMPT, WHISPER_LANGUAGE, STT_MODEL
 from .provider_discovery import detect_provider_type
 
 logger = logging.getLogger("voicemode")
@@ -157,7 +157,7 @@ async def simple_tts_failover(
 
 async def simple_stt_failover(
     audio_file,
-    model: str = "whisper-1",
+    model: str = None,
     **kwargs
 ) -> Optional[Dict[str, Any]]:
     """
@@ -227,18 +227,37 @@ async def simple_stt_failover(
             # Try STT with this endpoint - track timing
             request_start = time.perf_counter()
             # Build transcription kwargs with optional prompt for vocabulary biasing
+            effective_model = model or STT_MODEL
             transcription_kwargs = {
-                "model": model,
+                "model": effective_model,
                 "file": audio_file,
                 "response_format": "text"
             }
             if STT_PROMPT:
                 transcription_kwargs["prompt"] = STT_PROMPT
+            if WHISPER_LANGUAGE and WHISPER_LANGUAGE != "auto":
+                transcription_kwargs["language"] = WHISPER_LANGUAGE
 
             transcription = await client.audio.transcriptions.create(**transcription_kwargs)
             request_time_ms = (time.perf_counter() - request_start) * 1000
 
             text = transcription.strip() if isinstance(transcription, str) else transcription.text.strip()
+
+            # Filter known Whisper hallucinations (YouTube-derived patterns from silence/noise)
+            KNOWN_HALLUCINATIONS = [
+                "ご視聴ありがとうございました",
+                "チャンネル登録よろしくお願いします",
+                "ご視聴ありがとうございます",
+                "チャンネル登録お願いします",
+                "Thank you for watching",
+                "Thanks for watching",
+                "Please subscribe",
+                "Support me on PATREON",
+                "Subtítulos realizados por la comunidad de Amara.org",
+            ]
+            if text and any(h in text for h in KNOWN_HALLUCINATIONS):
+                logger.warning(f"STT hallucination filtered: '{text}'")
+                text = ""
 
             # Build metrics dict
             is_local = is_local_provider(base_url)

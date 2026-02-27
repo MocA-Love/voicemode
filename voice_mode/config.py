@@ -543,6 +543,7 @@ TTS_MODELS = parse_comma_list("VOICEMODE_TTS_MODELS", "tts-1,tts-1-hd,gpt-4o-min
 # STT prompt for vocabulary biasing (helps with specialized terminology)
 # See: https://platform.openai.com/docs/guides/speech-to-text#prompting
 STT_PROMPT = os.getenv("VOICEMODE_STT_PROMPT", "")
+STT_MODEL = os.getenv("VOICEMODE_STT_MODEL", "whisper-1")
 
 # Voice preferences cache
 _cached_voice_preferences: Optional[list] = None
